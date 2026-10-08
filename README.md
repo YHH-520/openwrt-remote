@@ -71,14 +71,6 @@ build/
   tools/          调试工具：ubus 命令行、CDP 驱动、截图对比、探测脚本
 ```
 
-## 两个坑，别踩
-
-**签名私钥不进仓库。** 它一旦公开，任何人都能签出一个系统认可的"官方升级包"，
-而 App 的 localStorage 里存着路由器登录密码，同签名的新版本会完整继承这些数据。
-详见 [`keystore/README.md`](OpenWrtRemote-Handoff/keystore/README.md)。
-
-**改了签名密钥，已装的设备必须卸载重装。** Android 只认"同一个签名者才能覆盖安装"。
-
 ## 许可
 
 [MIT](LICENSE) —— 随意使用、修改、再分发，保留版权声明即可。
@@ -151,12 +143,6 @@ build/
   env.sh          local build environment (paths derived from the file's own location)
   tools/          debug helpers: ubus CLI, CDP driver, screenshot diffing, probes
 ```
-
-## Two things not to get wrong
-
-**Never commit the signing key.** Once it's public, anyone can sign an "official update" that Android will accept — and since the app stores the router password in localStorage, a same-signed update inherits all of it. See [`keystore/README.md`](OpenWrtRemote-Handoff/keystore/README.md).
-
-**Changing the signing key forces every installed device to uninstall and reinstall.** Android only allows an in-place upgrade from the same signer.
 
 ## License
 
