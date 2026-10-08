@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 在系统默认的全屏主题上只改一件事：窗口底色。
+         其余（无 ActionBar、全屏）沿用父主题，避免自己拼属性拼漏。
+         注意：Android 12+ 会套用系统「启动画面」机制，把 windowBackground
+         当作 splash 底图，所以这里换成渐变正好接得上。
+         （刘海区模式在 MainActivity.applyImmersive() 里用 Java 设置，
+          放到这里会踩 minSdk 26 < 该属性的 API 27。） -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@drawable/launch_bg</item>
+    </style>
+</resources>

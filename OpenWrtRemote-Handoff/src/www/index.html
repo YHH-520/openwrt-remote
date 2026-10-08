@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#007AFF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="OpenWrt">
+<title>OpenWrt Remote</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<!-- ?v= 用来绕开 Service Worker 的旧缓存：
+     SW 是按完整 URL 做 cache key 的，改了版本号就等于换了一把钥匙，
+     WebView 里不会出现「装上新包却还在跑旧脚本」这种见鬼的事。 -->
+<link rel="stylesheet" href="css/style.css?v=1026">
+</head>
+<body>
+<div id="app">
+
+  <!-- 启动动画，整体黑白：黑底 + 白色图标。原生侧窗口底色和这里同色，
+       所以「系统启动画面 → 这一屏 → 主界面」是连贯的，中间不闪白也不闪黑。
+       它只是个覆盖层：DOM 一解析出来就立刻播，同时后面的 App 照常初始化
+       （概览与功能页的数据也在这一段时间里预加载，见 App.prefetchAll）。
+
+       动画按 App 图标本身来做，三件套：
+         ① 左边的长方块从屏幕左侧「跳」到中间
+         ② 右边的方块从右侧「滚」过来（边平移边转满一圈）
+         ③ 最后那根弧线从左往右画出来，接上两块，组成完整的图标
+       图标几何照抄 res/mipmap-xxxhdpi/ic_launcher.png 的路由器造型。 -->
+  <div id="splash">
+    <div class="sp-glow"></div>
+    <div class="sp-inner">
+      <div class="sp-logo">
+        <!-- 几何不是画着看的，是按 ic_launcher.png 的**逐像素扫描**反推出来的
+             （统一到 100x100 视口，和 192px 图标按 1:1 换算）：
+               · 外壳：描边矩形，中线框 x 19.8~80.2 / y 38~63.5，描边宽 4.2 —— 空心
+               · 分隔条：实心竖条 x 52.6~55.7，从顶边一直连到底边
+               · 指示灯：三颗**竖着**的像素小眼（3.8 x 5.4 圆角条），左二右一
+               · 天线弧：左端 (28.6,35) → 平顶 ≈ y26.3 → 右端 (70.8,35)，线宽 2.4 -->
+        <svg viewBox="0 0 100 100" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <g transform="translate(0,3.5)">
+            <!-- 左半：左边框 + 上下边框的左段 + 中间那道竖分隔条 + 两颗竖眼睛 -->
+            <g class="spg spg-left">
+              <path d="M54.15 38 L21.8 38 A2 2 0 0 0 19.8 40 L19.8 61.5 A2 2 0 0 0 21.8 63.5 L54.15 63.5"
+                    fill="none" stroke="currentColor" stroke-width="4.2"/>
+              <path d="M52.6 38 L55.7 38 L55.7 63.5 L52.6 63.5 Z" fill="currentColor" stroke="none"/>
+              <rect x="30.65" y="44.7" width="3.8" height="5.4" rx="1.7" fill="currentColor" stroke="none"/>
+              <rect x="41.1" y="44.7" width="3.8" height="5.4" rx="1.7" fill="currentColor" stroke="none"/>
+            </g>
+            <!-- 右半：右边框 + 上下边框的右段 + 一颗竖眼睛，从右边滚进来 -->
+            <g class="spg spg-right">
+              <path d="M54.15 38 L78.2 38 A2 2 0 0 1 80.2 40 L80.2 61.5 A2 2 0 0 1 78.2 63.5 L54.15 63.5"
+                    fill="none" stroke="currentColor" stroke-width="4.2"/>
+              <rect x="67.1" y="44.7" width="3.8" height="5.4" rx="1.7" fill="currentColor" stroke="none"/>
+            </g>
+            <!-- 最后那根线：天线弧，从左往右画出来把两块连起来 -->
+            <path class="sp-arc" d="M28.6 35 C 28.6 23.4, 70.8 23.4, 70.8 35"
+                  pathLength="100" fill="none" stroke="currentColor" stroke-width="2.4"/>
+          </g>
+        </svg>
+      </div>
+      <div class="sp-name">OpenWrt Remote</div>
+      <div class="sp-sub" data-i18n>路由器远程管理</div>
+      <div class="sp-track"><i></i></div>
+    </div>
+  </div>
+
+  <header id="nav" class="hidden">
+    <!-- 顶部状态条：只放一两条基础信息，且刻意把中间留空 ——
+         三星 S20U 这类机型的前摄挖孔在屏幕正中，标题居中会被挡住。
+         左边设备名、右边管理地址与延迟，中间没有内容。 -->
+    <div id="nav-status" class="hidden">
+      <span id="ns-left" class="ns-text"></span>
+      <span id="ns-right" class="ns-text"></span>
+    </div>
+    <div class="nav-inner">
+      <button id="nav-back" class="nav-btn hidden" data-action="back" aria-label="返回">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <h1 id="nav-title">OpenWrt</h1>
+      <button id="nav-action" class="nav-btn placeholder" data-action="refresh" aria-label="刷新">
+        <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-3.3 6.4M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="view"></main>
+
+  <!-- 下拉刷新的指示器。固定在内容区顶部（标题栏下面），
+       一半是「随手指旋转」，松手后转成持续旋转表示正在刷新。
+       逻辑见 app.js 的 ptrStart / ptrMove / ptrEnd。 -->
+  <div id="ptr" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-3.3 6.4M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <nav id="tabbar" class="hidden">
+    <span class="tab-glider"></span>
+    <!-- 每个 tab 两套图标：描边（.ic-line）和实心（.ic-fill）。
+         iOS 的底部栏选中项一律换成实心图标，这是它最容易被认出来的细节之一。
+         实心的齿轮没法简单地把描边填成实心（中间会糊成一块），
+         所以改成「加粗描边 + 实心圆心」，视觉重量够了就行。 -->
+    <button class="tab-item" data-tab="overview">
+      <svg class="ic-line" viewBox="0 0 24 24"><path d="M4 13l8-7 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 11.5V18h11v-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="ic-fill" viewBox="0 0 24 24"><path d="M12 3.1 2.8 11.3a1 1 0 0 0 .67 1.75H5v6.2A1.95 1.95 0 0 0 6.95 21.2h2.6v-5.4h4.9v5.4h2.6A1.95 1.95 0 0 0 19 19.25v-6.2h1.53a1 1 0 0 0 .67-1.75z" fill="currentColor"/></svg>
+      <span>概览</span>
+    </button>
+    <button class="tab-item" data-tab="menu">
+      <svg class="ic-line" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <svg class="ic-fill" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="2" fill="currentColor"/><rect x="14" y="4" width="7" height="7" rx="2" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="2" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="2" fill="currentColor"/></svg>
+      <span>功能</span>
+    </button>
+    <button class="tab-item" data-tab="settings">
+      <svg class="ic-line" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.98 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.98a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09c0 .68.4 1.28 1.03 1.56a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01c.28.63.88 1.03 1.56 1.03H21a2 2 0 1 1 0 4h-.09c-.68 0-1.28.4-1.56 1.03z" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+      <svg class="ic-fill" viewBox="0 0 24 24"><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.98 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.98a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09c0 .68.4 1.28 1.03 1.56a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01c.28.63.88 1.03 1.56 1.03H21a2 2 0 1 1 0 4h-.09c-.68 0-1.28.4-1.56 1.03z" fill="none" stroke="currentColor" stroke-width="3.1"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>
+      <span>设置</span>
+    </button>
+  </nav>
+
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+</div>
+
+<script src="js/i18n.js?v=1026"></script>
+<script src="js/api.js?v=1026"></script>
+<script src="js/app.js?v=1026"></script>
+</body>
+</html>

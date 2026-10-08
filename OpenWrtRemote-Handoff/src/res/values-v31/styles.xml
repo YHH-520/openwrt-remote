@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ 会给启动 Activity 自动加一层「系统启动画面」，
+     它的底色默认取 ?android:colorBackground（深色），会在点图标时闪一下。
+     这里显式指定成黑色 + 黑白的路由器标志，和网页里的拼装动画同色同形。
+
+     图标为什么用 PNG（ic_splash_mono）而不是自己画的 vector：
+     一开始写了个 vector（描边矩形 + 三颗圆点 + 天线弧），真机上系统启动画面
+     把它渲染成了「实心圆顶 + 两根横条」，形状完全不对 —— 这种一闪而过的地方
+     不值得赌 vector 的兼容性。改成从 ic_launcher.png 反推出来的黑白位图，
+     所见即所得，而且图形和桌面图标严格一致。
+     注意：styles 在带限定符的目录里是**整体替换**而不是合并，
+     所以 windowBackground 要再写一遍。 -->
+<resources>
+
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@drawable/launch_bg</item>
+        <item name="android:windowSplashScreenBackground">#000000</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_mono</item>
+    </style>
+</resources>

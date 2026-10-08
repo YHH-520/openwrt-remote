@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 冷启动的窗口底色：纯黑。
+     系统在 Activity 第一帧之前画的就是它，默认主题那层深蓝黑会闪一下。
+     这里刻意做成黑色而不是品牌蓝 —— 启动画面是黑白的（黑底 + 白色图标），
+     原生窗口底色、Android 12 的系统启动画面、网页里那一屏，三处必须一致。
+     改动时记得同步 css/style.css 的 #splash 与 MainActivity.brandBackground()。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="#08080A"
+        android:endColor="#000000" />
+</shape>

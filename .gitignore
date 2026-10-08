@@ -1,0 +1,27 @@
+# ---- 构建产物 ----
+OpenWrtRemote-Handoff/output/
+build/work/
+build/probe/
+build/shots/
+build/output/
+
+# ---- 工具链（体积大，不进仓库）----
+build/temp/
+
+# ---- ★ 签名私钥：绝对不要提交 ----
+*.keystore
+*.jks
+*.p12
+OpenWrtRemote-Handoff/keystore/*
+!OpenWrtRemote-Handoff/keystore/README.md
+
+# ---- 含本机路由器信息的诊断截图 ----
+OpenWrtRemote-Handoff/diagnose/
+
+# ---- 打包好的 APK：要分发请走 Release，别提交进仓库 ----
+# OpenWrtRemote-Handoff/apk/
+
+# ---- 杂项 ----
+hs_err_pid*.log
+replay_pid*.log
+.DS_Store

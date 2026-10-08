@@ -1,0 +1,544 @@
+/* ============ OpenWrt Remote - iOS 风格 ============ */
+
+/* 兼容性约定：这里**不要用 inset 简写**（Chrome 87+）。
+   老 WebView 会整条忽略，而 .switch .track / .modal-mask / #splash 少了它就直接塌成 0 尺寸 ——
+   开关变形、弹窗点不到、启动画面没有尺寸。一律写 top/right/bottom/left。
+   同理，flex 的 gap 是 Chrome 84+；老版本上只是间距变小，可以接受。 */
+
+:root {
+  --bg: #F2F2F7;
+  --bg-elevated: #FFFFFF;
+  --card: #FFFFFF;
+  --card-secondary: #F2F2F7;
+  --text: #000000;
+  --text-secondary: #8E8E93;
+  --text-tertiary: #C7C7CC;
+  --separator: rgba(60,60,67,0.29);
+  --accent: #007AFF;
+  --green: #34C759;
+  --red: #FF3B30;
+  --orange: #FF9500;
+  --nav-bg: rgba(242,242,247,0.82);
+  --tab-bg: rgba(249,249,249,0.9);
+  --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.05);
+  --hero-a: #007AFF;
+  --hero-b: #5856D6;
+}
+
+html[data-theme="dark"] {
+  --bg: #000000;
+  --bg-elevated: #1C1C1E;
+  --card: #1C1C1E;
+  --card-secondary: #2C2C2E;
+  --text: #FFFFFF;
+  --text-secondary: #98989F;
+  --text-tertiary: #48484A;
+  --separator: rgba(84,84,88,0.6);
+  --accent: #0A84FF;
+  --green: #30D158;
+  --red: #FF453A;
+  --orange: #FF9F0A;
+  --nav-bg: rgba(28,28,30,0.82);
+  --tab-bg: rgba(28,28,30,0.9);
+  --shadow: 0 1px 3px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.25);
+  --hero-a: #0A84FF;
+  --hero-b: #5E5CE6;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* iOS 平时不画滚动条，只在滚动时闪一下 */
+::-webkit-scrollbar { width: 0; height: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "PingFang SC", "HarmonyOS Sans SC", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.45;
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden { display: none !important; }
+
+/* ============ 导航栏 ============ */
+#nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--nav-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--separator);
+}
+.nav-inner {
+  display: flex; align-items: center;
+  height: 44px; padding: 0 4px;
+}
+#nav-title {
+  flex: 1; text-align: center; font-size: 17px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* 大标题还在屏幕上时它是隐形的，滚上去才淡出来 —— 见 App.syncNavTitle */
+  transition: opacity 0.24s ease;
+}
+#nav-title.dim { opacity: 0; }
+
+/* 顶部状态条：左右各一条基础信息，中间留空避开前摄挖孔 */
+#nav-status {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 6px) 16px 2px;
+  font-size: 12px; line-height: 1.2; color: var(--text-secondary);
+}
+.ns-text {
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: 47%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ns-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none; display: inline-block;
+  background: var(--green); box-shadow: 0 0 0 3px rgba(52,199,89,0.16);
+}
+.nav-btn {
+  width: 44px; height: 44px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; color: var(--accent); cursor: pointer;
+}
+.nav-btn svg { width: 24px; height: 24px; }
+.nav-btn.placeholder { visibility: hidden; }
+
+/* ============ 页面容器 ============ */
+.page { padding: 0 16px 130px; }
+/* 顶部现在是「状态条 + 标题栏」两层，避让高度也要跟着涨 */
+.page.pt { padding-top: calc(84px + env(safe-area-inset-top)); }
+.page-title { font-size: 34px; font-weight: 700; letter-spacing: -0.7px; margin: 10px 4px 4px; }
+.page-sub { font-size: 15px; color: var(--text-secondary); margin: 0 4px 18px; }
+
+/* ============ 分组列表（iOS Settings 风格） ============ */
+.group { margin: 18px 0; }
+.group-title { font-size: 13px; color: var(--text-secondary); margin: 0 20px 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+.group-card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+
+.cell { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 8px 16px; background: var(--card); }
+.cell + .cell { border-top: 0.5px solid var(--separator); }
+.cell-label { flex: 1; min-width: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* max-width 原来是 55%，会把「136.6 MB / 256.0 MB（53%）」这类较长的值截断成省略号；
+   放宽到 72% 后，短标签行能完整显示，长标签行仍由 flex 收缩 + 省略号兜底。 */
+.cell-value { font-size: 16px; color: var(--text-secondary); flex: 0 1 auto; min-width: 0; max-width: 72%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell-desc { flex: 1; font-size: 13px; color: var(--text-secondary); line-height: 1.35; }
+.cell-icon { width: 30px; height: 30px; border-radius: 7px; flex: none; display: flex; align-items: center; justify-content: center; }
+.cell-icon svg { width: 18px; height: 18px; }
+/* 列表右侧箭头：之前 CSS 里完全没有 .chevron 规则，SVG 又没写 width/height，
+   会被 flex 撑成占满整行的巨型图形、把文字挤出屏幕。这里补齐尺寸与颜色。 */
+.chevron { width: 17px; height: 17px; flex: none; color: var(--text-tertiary); opacity: 0.9; }
+.cell-clickable { cursor: pointer; transition: background 0.12s ease; }
+.cell-clickable:active { background: var(--card-secondary); }
+.cell-danger { color: var(--red); font-weight: 500; }
+
+.cell-input { flex: 1; border: none; background: transparent; font-size: 17px; color: var(--text); text-align: right; outline: none; padding: 4px 0; min-width: 0; }
+.cell-input::placeholder { color: var(--text-tertiary); }
+.cell-input[type="password"] { letter-spacing: 1.5px; }
+
+/* ============ iOS 开关 ============ */
+.switch { position: relative; display: inline-block; width: 51px; height: 31px; flex: none; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch .track { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: #E9E9EA; border-radius: 16px; transition: background 0.2s; }
+html[data-theme="dark"] .switch .track { background: #39393D; }
+.switch .thumb {
+  position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 1px rgba(0,0,0,0.12);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.switch input:checked + .track { background: var(--green); }
+.switch input:checked + .track + .thumb { transform: translateX(20px); }
+
+/* ============ 按钮 ============ */
+.btn {
+  display: block; width: 100%; padding: 14px; border: none; border-radius: 12px;
+  font-size: 17px; font-weight: 600; cursor: pointer;
+  transition: transform 0.14s ease, opacity 0.14s ease, background 0.14s ease;
+}
+/* iOS 的按压不是变色，是「轻轻陷下去」——幅度很小，时间也很短 */
+.btn:active { transform: scale(0.975); opacity: 0.9; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-secondary { background: var(--card); color: var(--accent); box-shadow: var(--shadow); }
+.btn:disabled { opacity: 0.5; }
+.btn-row { display: flex; gap: 12px; margin-top: 18px; }
+.btn-row .btn { flex: 1; }
+
+/* ============ 底部 Tab（iOS 26 液态玻璃 / 可拖动选中块） ============
+   三件事：
+   1. 磨砂：一条悬浮胶囊，靠大半径 blur + saturate 做折射感，
+      ::after 再压一层自上而下的高光 —— 玻璃「浮起来」的关键；
+   2. 选中块 .tab-glider 是一层独立的圆角玻璃，跟着当前 Tab 平移；
+   3. 它可以**拖**：手指按住底栏左右滑动，滑块跟手走，松手吸附到最近的一项
+      （逻辑见 app.js 的 tabDragStart / tabDragMove / tabDragEnd）。
+      拖动时加 .dragging 把 transition 关掉，否则每帧都在做补间，滑块会「追不上手」。 */
+#tabbar {
+  position: fixed; left: 12px; right: 12px; z-index: 100;
+  bottom: calc(env(safe-area-inset-bottom) + 10px);
+  display: flex; align-items: stretch; gap: 4px;
+  padding: 5px; border-radius: 28px;
+  /* 磨砂底刻意压成「浅灰玻璃」而不是纯白：底下是 #F2F2F7，
+     如果两条都取白，选中项的白色滑块就完全融进去了（第一版就是这个毛病，
+     远看只剩一个描边）。浅灰玻璃 + 纯白滑块才有 iOS 那种层次。 */
+  background: rgba(245,245,248,0.72);
+  backdrop-filter: blur(30px) saturate(185%);
+  -webkit-backdrop-filter: blur(30px) saturate(185%);
+  /* 1px 亮边勾出玻璃厚度，和下面的内容形成「浮起来」的边界 */
+  border: 0.5px solid rgba(255,255,255,0.9);
+  box-shadow: 0 12px 34px rgba(0,0,0,0.14), 0 1px 2px rgba(0,0,0,0.05),
+              inset 0 1px 0 rgba(255,255,255,0.9);
+  isolation: isolate;
+  /* 拖动选中块：不让浏览器把它当成滚动手势抢走，也不要长按选中文字 */
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+}
+#tabbar::after {
+  content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.48) 0%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0) 60%);
+}
+.tab-glider {
+  position: absolute; top: 0; left: 0; z-index: 0; opacity: 0;
+  border-radius: 22px; pointer-events: none;
+  background: #FFFFFF;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.13), 0 1px 2px rgba(0,0,0,0.07),
+              inset 0 1px 0 #FFFFFF;
+  transition: transform 0.34s cubic-bezier(0.32, 0.72, 0.24, 1),
+              width 0.34s cubic-bezier(0.32, 0.72, 0.24, 1),
+              height 0.3s cubic-bezier(0.32, 0.72, 0.24, 1),
+              opacity 0.2s ease;
+  will-change: transform;
+}
+/* 拖动中：跟手，不要补间 */
+.tab-glider.dragging {
+  transition: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.16), 0 1px 2px rgba(0,0,0,0.08),
+              inset 0 1px 0 rgba(255,255,255,0.9);
+}
+/* 松手吸附：终点由 cubic-bezier 的 y>1 做过冲，落到位时会轻轻「弹」一下 */
+.tab-glider.settle {
+  transition: transform 0.42s cubic-bezier(0.3, 1.22, 0.42, 1),
+              width 0.3s cubic-bezier(0.32, 0.72, 0.24, 1),
+              height 0.3s cubic-bezier(0.32, 0.72, 0.24, 1),
+              opacity 0.2s ease;
+}
+.tab-item {
+  position: relative; z-index: 1; flex: 1; border-radius: 22px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 7px 0 6px; background: none; border: none;
+  color: var(--text-secondary); font-size: 10px; font-weight: 500; cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.tab-item svg { width: 23px; height: 23px; transition: transform 0.24s cubic-bezier(0.32,0.72,0.24,1); }
+/* 每个 tab 备了描边和实心两套图标，选中时切到实心 —— iOS 底部栏一直是这么做的 */
+.tab-item .ic-fill { display: none; }
+.tab-item.active .ic-fill { display: block; }
+.tab-item.active .ic-line { display: none; }
+.tab-item:active svg { transform: scale(0.88); }
+.tab-item.active { color: var(--accent); font-weight: 600; }
+/* 被选中的那一项图标轻轻抬一下，和滑块一起「弹」到位 */
+.tab-item.active svg { transform: translateY(-1px) scale(1.06); }
+/* 拖动滑过但还没松手的那一项：先用颜色提示，不做真正的页面切换
+   （切换会很慢，拖动过程中一路切过去会卡） */
+.tab-item.drag-hover { color: var(--accent); }
+
+html[data-theme="dark"] #tabbar {
+  background: rgba(30,30,33,0.62);
+  border-color: rgba(255,255,255,0.14);
+  box-shadow: 0 12px 34px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.4),
+              inset 0 1px 0 rgba(255,255,255,0.12);
+}
+html[data-theme="dark"] #tabbar::after {
+  background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.02) 42%, rgba(255,255,255,0) 62%);
+}
+/* 深色下「抬起来」靠的是变亮而不是变白，所以用一层半透明白 + 细亮边 */
+html[data-theme="dark"] .tab-glider {
+  background: linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.15) 100%);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+/* ============ 下拉刷新 ============
+   指示器做成固定定位、靠 transform 跟着手指走的一枚圆形箭头：
+   #view 自己下拉让位，箭头一边下移一边旋转（角度和位移挂钩，所以「跟手」）。
+   手指放开时 · 不够阈值 → 弹回去；够阈值 → 转成持续旋转，等数据回来再收。 */
+#ptr {
+  position: fixed; z-index: 90; left: 50%; top: calc(84px + env(safe-area-inset-top));
+  width: 28px; height: 28px; margin-left: -14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); opacity: 0; pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+#ptr svg { width: 22px; height: 22px; }
+/* 刷新中：持续旋转，和手指的旋转解耦 */
+#ptr.spin svg { animation: ptrSpin 0.9s linear infinite; }
+@keyframes ptrSpin { to { transform: rotate(360deg); } }
+/* 下拉时的位移用 transition 做回弹；跟手阶段会临时把 transition 关掉 */
+#view { will-change: transform; }
+
+/* ============ Modal ============ */
+.modal-mask {
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 200; display: flex;
+  align-items: center; justify-content: center; padding: 24px;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  animation: maskIn 0.22s ease both;
+}
+@keyframes maskIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes alertIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* 表单类弹窗走 iOS 的底部卡片：贴底、上面两角圆、带一根抓手条。
+   字段多（防火墙规则十来个）时它从底部往上长，拇指够得着。 */
+.modal-mask.sheet { align-items: flex-end; padding: 0; }
+.modal-mask.sheet .modal {
+  max-width: none; max-height: 88vh;
+  border-radius: 18px 18px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: sheetUp 0.36s cubic-bezier(0.32, 0.72, 0.24, 1) both;
+  position: relative;
+}
+.modal-mask.sheet .modal::before {
+  content: ''; position: absolute; top: 7px; left: 50%; margin-left: -18px;
+  width: 36px; height: 5px; border-radius: 3px; background: var(--separator);
+}
+.modal-mask.sheet .modal-body { padding-top: 26px; }
+.modal {
+  width: 100%; max-width: 330px; max-height: 86vh; display: flex; flex-direction: column;
+  background: var(--bg-elevated); border-radius: 14px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: alertIn 0.24s cubic-bezier(0.32, 0.72, 0.24, 1) both;
+}
+/* 配置表单字段多（防火墙规则有十来个），必须能滚动，
+   否则底部按钮会被挤出屏幕 */
+.modal-body { padding: 20px 16px 6px; text-align: center; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.modal-text { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+.modal-hint { font-size: 12px; color: var(--text-secondary); text-align: left; line-height: 1.5; margin: 2px 0 10px; }
+.modal-label { font-size: 12px; color: var(--text-secondary); text-align: left; margin: 10px 2px -2px; }
+.modal-note { font-size: 12px; color: var(--text-secondary); text-align: left; line-height: 1.45; margin: 5px 2px 0; }
+.modal-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 2px; }
+.modal-row-label { flex: 1; min-width: 0; font-size: 16px; text-align: left; }
+.modal-field { width: 100%; margin: 6px 0; padding: 12px 14px; border: none; border-radius: 10px; background: var(--card-secondary); color: var(--text); font-size: 16px; outline: none; text-align: left; -webkit-appearance: none; appearance: none; }
+select.modal-field { background-image: none; }
+.modal-actions { flex: none; display: flex; border-top: 0.5px solid var(--separator); margin-top: 14px; }
+.modal-btn { flex: 1; padding: 14px 0; background: none; border: none; font-size: 17px; cursor: pointer; transition: background 0.12s ease; }
+.modal-btn:active { background: var(--card-secondary); }
+.modal-btn + .modal-btn { border-left: 0.5px solid var(--separator); }
+.modal-btn.cancel { color: var(--text-secondary); }
+.modal-btn.destructive { color: var(--red); font-weight: 600; }
+.modal-btn.accent { color: var(--accent); font-weight: 600; }
+/* 列表行内的「编辑 / 删除」按钮：复用 .modal-btn 的配色，但不能沿用它的 flex:1
+   （那是弹窗里让按钮均分宽度的），否则会把左侧名称挤成省略号。必须写在 .modal-btn 之后。 */
+.cell-action { flex: none; padding: 6px 12px; font-size: 15px; }
+
+/* ============ Toast ============ */
+#toast-root { position: fixed; top: calc(env(safe-area-inset-top) + 96px); left: 50%; transform: translateX(-50%); z-index: 300; width: max-content; max-width: 86vw; }
+.toast { background: rgba(28,28,30,0.92); color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 14px; box-shadow: var(--shadow); margin-top: 8px; opacity: 0; transition: opacity 0.25s; text-align: center; }
+.toast.show { opacity: 1; }
+.toast.error { background: rgba(255,69,58,0.95); }
+
+/* ============ 状态/统计 ============ */
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; gap: 16px; }
+.stat-label { color: var(--text-secondary); font-size: 14px; flex: none; }
+.stat-value { font-size: 14px; font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+.progress { height: 6px; background: var(--card-secondary); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+.progress > i { display: block; height: 100%; border-radius: 3px; transition: width 0.5s; }
+.progress > i.low { background: var(--accent); }
+.progress > i.mid { background: var(--orange); }
+.progress > i.high { background: var(--red); }
+
+.badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; flex: none; }
+.badge.on { background: rgba(52,199,89,0.15); color: var(--green); }
+.badge.off { background: rgba(142,142,147,0.15); color: var(--text-secondary); }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-tertiary); flex: none; }
+.dot.up { background: var(--green); }
+
+/* ============ 概览 Hero ============ */
+.hero {
+  background: linear-gradient(135deg, var(--hero-a), var(--hero-b));
+  border-radius: 16px; padding: 20px; color: #fff; margin: 8px 0 6px;
+  box-shadow: 0 10px 24px rgba(0, 122, 255, 0.22);
+}
+.hero-model { font-size: 22px; font-weight: 700; word-break: break-word; }
+.hero-sub { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+.hero-ip { font-size: 15px; font-weight: 600; margin-top: 14px; word-break: break-all; }
+
+/* ============ 日志 ============ */
+.log-box {
+  background: var(--card); border-radius: 12px; padding: 12px 14px;
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px; line-height: 1.65; white-space: pre-wrap; word-break: break-all;
+  max-height: 68vh; overflow-y: auto; box-shadow: var(--shadow);
+}
+/* 日志按级别标色：出错的行一眼能挑出来 */
+.log-line { border-left: 2px solid transparent; padding-left: 8px; margin-left: -8px; }
+.log-line.log-warn { color: var(--orange); border-left-color: var(--orange); }
+.log-line.log-err { color: var(--red); border-left-color: var(--red); }
+.empty { text-align: center; color: var(--text-secondary); font-size: 15px; padding: 52px 28px; line-height: 1.6; }
+
+/* ============ Segmented ============ */
+.segmented { display: flex; background: var(--card-secondary); border-radius: 9px; padding: 2px; gap: 2px; }
+.segmented button {
+  flex: 1; padding: 7px 2px; border: none; background: transparent;
+  color: var(--text-secondary); font-size: 13px; border-radius: 7px; cursor: pointer;
+  transition: background 0.22s cubic-bezier(0.32,0.72,0.24,1), color 0.18s ease, box-shadow 0.22s ease;
+}
+.segmented button.active { font-weight: 600; }
+.segmented button.active { background: var(--bg-elevated); box-shadow: 0 1px 3px rgba(0,0,0,0.12); color: var(--text); font-weight: 600; }
+
+/* ============ 骨架屏 ============ */
+.skeleton { background: linear-gradient(90deg, var(--card-secondary) 25%, rgba(142,142,147,0.18) 50%, var(--card-secondary) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ============ 网络/速率 ============ */
+.rate { font-size: 13px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* ============ 登录页 ============ */
+.login-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 28px calc(env(safe-area-inset-bottom) + 120px); }
+.login-logo { width: 84px; height: 84px; border-radius: 20px; margin-bottom: 18px; box-shadow: 0 12px 28px rgba(0,122,255,0.28); }
+.login-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.login-sub { font-size: 14px; color: var(--text-secondary); margin-bottom: 28px; text-align: center; }
+.login-conn { width: 100%; }
+.login-error { width: 100%; background: rgba(255,59,48,0.1); color: var(--red); font-size: 13px; padding: 10px 14px; border-radius: 10px; margin-top: 14px; display: none; }
+.login-error.show { display: block; }
+.login-link { margin-top: 16px; color: var(--accent); font-size: 15px; background: none; border: none; cursor: pointer; }
+.login-loading { width: 100%; text-align: center; color: var(--text-secondary); font-size: 14px; padding: 12px 0; }
+
+/* ============ 启动动画 ============
+   整体黑白：黑底 + 白色图标。
+   原生侧的窗口底色（res/drawable/launch_bg.xml）、Android 12+ 的系统启动画面
+   （res/values-v31/styles.xml，黑底 + 白色 splash_icon）都改成同色，
+   所以是「黑 → 黑 → 主界面」，中间不会闪出别的底色。
+   节奏：图标从左/右两边拼进黑板，最后一根弧线连上，名字在下方浮现；
+   App 初始化完成（或最多 3.4 秒）后整块淡出，主界面同时上浮进场。
+   注意：#splash 用 transform 做退场，不要给 #app 加 transform ——
+   那会让里面 position:fixed 的标题栏和底栏失去固定定位。 */
+#splash {
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+  background: #000000;
+  transition: opacity 0.46s ease, transform 0.6s cubic-bezier(0.3, 0.7, 0.2, 1);
+  will-change: opacity, transform;
+}
+/* 退场：整体放大一点再淡掉，像 iOS 启动画面让位给主界面那样 */
+#splash.out { opacity: 0; transform: scale(1.08); pointer-events: none; }
+.sp-glow {
+  position: absolute; width: 78vw; height: 78vw; max-width: 420px; max-height: 420px;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 66%);
+  animation: spGlow 2.4s ease-in-out infinite;
+}
+.sp-inner { position: relative; display: flex; flex-direction: column; align-items: center; }
+/* 图标底盘 = App 图标那块圆角方板，图形是白色的 —— 最终拼好的样子要和
+   res/mipmap-xxxhdpi/ic_launcher.png / www/icon.svg 的造型一致，
+   只是整体走黑白：近黑的板 + 白色图形。
+   纯黑底上的黑板必须靠一道极细的亮边和一点体积感才立得起来。 */
+.sp-logo {
+  width: 104px; height: 104px; border-radius: 24px;
+  display: flex; align-items: center; justify-content: center;
+  color: #FFFFFF;                       /* 图形颜色，SVG 里用 currentColor 取 */
+  background: linear-gradient(160deg, #1A1A1E 0%, #0A0A0C 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  animation: spPlate 0.5s cubic-bezier(0.2, 0.9, 0.25, 1.06) both;
+}
+/* 尺寸要和图标完全对上：图标里外壳占整块板的 64.6%，SVG 就取整块板的宽度，
+   几何按 100 视口 1:1 画，比例才一致。
+   overflow 必须放开 —— SVG 根默认 overflow:hidden，会把「从画布外飞进来」
+   的那两块裁掉，跳入/滚入的过程就看不见了。 */
+.sp-logo svg {
+  width: 102px; height: 102px; overflow: visible;
+  /* 投影有两个作用：飞行途中让方块像「实体」而不是几根飘着的线；
+     落位后让白色图形在黑板上有一点厚度，不至于像贴纸。 */
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.55));
+}
+
+/* 左半长方块：从左侧跳进来，落点带一点过冲和一次小小的沉浮 */
+.spg-left { animation: spJumpIn 0.54s cubic-bezier(0.22, 0.9, 0.3, 1) 0.05s both; }
+/* 右半方块：从右侧滚进来，一边平移一边转满一圈（像轮子滚到位） */
+.spg-right { animation: spRollIn 0.56s cubic-bezier(0.2, 0.72, 0.26, 1) 0.09s both; }
+/* 变量：所有 SVG 子元素的变换都相对自身外框，旋转才是绕自己转 */
+.spg { transform-box: fill-box; transform-origin: center; }
+/* 指示灯（三颗竖着的小眼）是左右两块自己的子元素，跟着它们一起飞进来，
+   所以不单独做动画 —— 左边那颗方块带着它那两颗眼睛，右边那颗带着一颗。 */
+/* 最后那根线：从左往右画出来，把左右两块连成一个整体。
+   pathLength="100" 把弧长归一化，所以 dasharray/dashoffset 直接写 100 就行，
+   不用去猜真实弧长。 */
+.sp-arc {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: spArc 0.36s cubic-bezier(0.35, 0.8, 0.4, 1) 0.62s both;
+}.sp-name {
+  margin-top: 24px; font-size: 20px; font-weight: 600; color: #FFFFFF; letter-spacing: 0.3px;
+  animation: spUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.7s both;
+}
+.sp-sub {
+  margin-top: 6px; font-size: 13px; color: rgba(255,255,255,0.62);
+  animation: spUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.79s both;
+}
+.sp-track {
+  margin-top: 30px; width: 116px; height: 3px; border-radius: 3px; overflow: hidden;
+  background: rgba(255,255,255,0.18);
+  animation: spUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.86s both;
+}
+.sp-track i {
+  display: block; width: 40%; height: 100%; border-radius: 3px; background: #fff;
+  animation: spSlide 1.1s cubic-bezier(0.55, 0, 0.45, 1) infinite;
+}
+@keyframes spPlate {
+  from { opacity: 0; transform: scale(0.72); }
+  to   { opacity: 1; transform: scale(1); }
+}
+/* 飞进来的两块全程都是**白色**：底盘是蓝板、背景是亮蓝渐变，
+   白图形压在两者上都看得清，所以不需要中途换色 ——
+   落地后就是图标本身（蓝板 + 白色路由器）。 */
+@keyframes spJumpIn {
+  0%   { opacity: 0; transform: translate(-122px, -12px) scale(0.9); }
+  8%   { opacity: 1; }
+  100% { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+/* 滚进来分两段，这是关键：
+   前 55% 在**白板外面**把整圈转完（顺带平移「滚」过去，位移 ≈ 一个周长，像轮子），
+   后 45% 只做平移，进板那一刻已经是正的了。
+   一开始把旋转铺满整段，结果进板时方块还是歪的、斜着压在左半上 ——
+   看起来像渲染坏了，而不是「滚进来」。 */
+@keyframes spRollIn {
+  0%   { opacity: 0; transform: translate(132px, 0) rotate(0deg); }
+  7%   { opacity: 1; }
+  48%  { opacity: 1; transform: translate(60px, 0) rotate(-360deg); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(-360deg); }
+}
+@keyframes spArc {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes spUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spSlide {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(250%); }
+}
+@keyframes spGlow {
+  0%, 100% { opacity: 0.55; transform: scale(0.94); }
+  50%      { opacity: 0.9;  transform: scale(1.06); }
+}
+/* 主界面进场：启动画面淡出的同时内容轻轻上浮 */
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#view.reveal { animation: viewIn 0.46s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+/* 尊重系统的「减弱动态效果」设置 */
+/* 尊重系统的「减弱动态效果」设置。动画时长压到 0.01ms 后，
+   配合 animation-fill-mode:both 会直接停在最终帧 —— 也就是「图标已经拼好」的状态，
+   不会出现元素停在画布外或弧线没画出来的情况。 */
+@media (prefers-reduced-motion: reduce) {
+  #splash, .tab-glider, .tab-item, .tab-item svg { transition-duration: 0.01ms !important; }
+  .sp-logo, .spg-left, .spg-right, .sp-arc, .sp-name, .sp-sub, .sp-track, .sp-glow,
+  #view.reveal { animation-duration: 0.01ms !important; }
+}
